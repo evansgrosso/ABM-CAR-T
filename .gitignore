@@ -1,5 +1,6 @@
 # Ignore the Simulation Results directory and all its contents
 Simulation Results/
+.DS_Store
 
 # Ignore all PNG files anywhere in the repository
 *.png
