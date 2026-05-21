@@ -8,6 +8,9 @@ def main():
     exhaustion = []
     alive_count = []
 
+    pockets_acessed = []
+    visited_pockets = set()
+
     def track(t, env, agents, kills_this_tick):
         ticks.append(t)
         kills.append(kills_this_tick)
@@ -19,11 +22,16 @@ def main():
             exhaustion.append(np.mean([a.exhaustion for a in alive]))
         else:
             exhaustion.append(0)
+
+        for a in alive:
+            visited_pockets.add(a.position)
+
+        pockets_acessed.append(len(visited_pockets))
             
 
     run(on_step=track)
 
-    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    fig, axs = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
     
     axs[0].plot(ticks, kills, color='red')
     axs[0].set_ylabel('Kills / Tick')
@@ -36,9 +44,13 @@ def main():
     axs[2].set_ylabel('Average Exhaustion')
     axs[2].set_xlabel('Time (ticks)')
 
+    axs[3].plot(ticks, pockets_acessed, color='purple')
+    axs[3].set_ylabel('Pockets Accessed')
+    axs[3].set_xlabel('Time (ticks)')
+
     plt.savefig("sim_metrics.png")
 
-    #TODO: Add project relevant visualizations. Spatial penetration, MVT-relevant data.
+    #TODO: Add project relevant visualizations. Spatial penetration.
 
 if __name__ == "__main__":
     main()
