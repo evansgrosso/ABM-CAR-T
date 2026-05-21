@@ -10,6 +10,7 @@ from configuration import (
     SEED_STROMA_VERTICAL,
     SEED_CARRYING_CAPACITY,
     SEED_POPULATION,
+    DENSITY_MULTIPLIER
 )
 
 
@@ -25,12 +26,12 @@ class Environment: #TODO: Professor Shuai mentioned there may be a more efficien
         for i in range(self.n + 1):
             for j in range(self.n):
                 self.stroma_horizontal[i][j] = pnoise2(i/PERLIN_SCALE, j/PERLIN_SCALE, 1, 0.5, 2, SEED_STROMA_HORIZONTAL)
-        self.stroma_horizontal = (self.stroma_horizontal + 1) / 2
+        self.stroma_horizontal = ((self.stroma_horizontal + 1) / 2) * DENSITY_MULTIPLIER
 
         for i in range(self.n):
             for j in range(self.n + 1):
                 self.stroma_vertical[i][j] = pnoise2(i/PERLIN_SCALE, j/PERLIN_SCALE, 1, 0.5, 2, SEED_STROMA_VERTICAL)
-        self.stroma_vertical = (self.stroma_vertical + 1) / 2
+        self.stroma_vertical = ((self.stroma_vertical + 1) / 2) * DENSITY_MULTIPLIER
 
         for i in range(self.n):
             for j in range(self.n):

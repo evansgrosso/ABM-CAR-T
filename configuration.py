@@ -8,6 +8,8 @@ CARRYING_CAPACITY_MIN = 1
 
 PERLIN_SCALE = 25
 
+DENSITY_MULTIPLIER = 0.5
+
 # Seeds for each independently generated noise layer
 SEED_STROMA_HORIZONTAL = 42
 SEED_STROMA_VERTICAL   = 43
