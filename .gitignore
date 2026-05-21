@@ -1,3 +1,9 @@
+# Ignore the Simulation Results directory and all its contents
+Simulation Results/
+
+# Ignore all PNG files anywhere in the repository
+*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

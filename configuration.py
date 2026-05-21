@@ -20,25 +20,25 @@ SEED_POPULATION        = 45
 
 NUM_AGENTS = 10000 #TODO: Verify that expected effector:malignant ratio is defensible
 
-AFFINITY_MEAN = 0.9
-AFFINITY_STD  = 0.10
+AFFINITY_MEAN = 0
+AFFINITY_STD  = 0
 
 # Behavior
 
 HANDLING_TIME_PARAM = 3
 
-TRAVERSAL_SCALE = 25
+TRAVERSAL_SCALE = 1
 
 TRAVERSAL_TIME_MULTIPLIER = 12 #TODO: Verify that traversal time multiplier is defensible. Determine spatial scale of simulated environment and compare it to in-vivo data of T-cell traversal
 
 KILL_DURATION_SUCCESS = 2
 KILL_DURATION_FAIL    = 4
 
-EXHAUSTION_K_C = 0.005
+EXHAUSTION_K_C = 0.05
 
-EXHAUSTION_K_P = 0.0001
+EXHAUSTION_K_P = 0.0
 
-EXHAUSTION_K_L = 0.002
+EXHAUSTION_K_L = 0.001
 
 # Simulation Rules
 
