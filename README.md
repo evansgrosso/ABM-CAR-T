@@ -35,7 +35,7 @@ An agent based model of CAR T cells in a 2D desmoplastic tumor. Created to inves
 - **Generating Initial Population**: $\mathbf{P}_p (x,y)$
 - **Generating Stromal Densities**: $H(x,y); V(x,y)$
 - **Generating Malignant Pocket Carrying Capacity**: $\mathbf{P}_K (x,y)$
-- **Generating Malignant Growth ($p(t+1)$): $p(t+1) = p(t) + [r*p(t)]\frac{1-p(t)}{K_{(x,y)}} - kills(t)$
+- **Generating Malignant Growth ($p(t+1)$)**: $p(t+1) = p(t) + [r*p(t)]\frac{1-p(t)}{K_{(x,y)}} - kills(t)$
 	- $p(t)$: The current population of the pocket
 	- $r$: Malignant growth rate (aggressiveness). Uniform across all pockets (0.010 for a 72 hour doubling rate). 
 	- $K_{(x,y)}$: Malignant population carrying capacity of the pocket
