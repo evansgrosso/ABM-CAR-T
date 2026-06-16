@@ -8,7 +8,7 @@ CARRYING_CAPACITY_MIN = 1
 
 PERLIN_SCALE = 25
 
-DENSITY_MULTIPLIER = 0.5
+DENSITY_MULTIPLIER = 0.2
 
 # Seeds for each independently generated noise layer
 SEED_STROMA_HORIZONTAL = 42
@@ -20,8 +20,8 @@ SEED_POPULATION        = 45
 
 NUM_AGENTS = 10000 #TODO: Verify that expected effector:malignant ratio is defensible
 
-AFFINITY_MEAN = 0
-AFFINITY_STD  = 0
+AFFINITY_MEAN = 0.05
+AFFINITY_STD  = 0.001
 
 # Behavior
 
@@ -34,9 +34,9 @@ TRAVERSAL_TIME_MULTIPLIER = 12 #TODO: Verify that traversal time multiplier is d
 KILL_DURATION_SUCCESS = 2
 KILL_DURATION_FAIL    = 4
 
-EXHAUSTION_K_C = 0.05
+EXHAUSTION_K_C = 0.01
 
-EXHAUSTION_K_P = 0.0
+EXHAUSTION_K_P = 0.001
 
 EXHAUSTION_K_L = 0.001
 
