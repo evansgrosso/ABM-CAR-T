@@ -16,7 +16,7 @@ from configuration import (
 
 def compute_probabilities(agent, environment):
     row, col = agent.position
-    p = environment.population_grid[row, col]
+    p = environment.population_grid[row, col] # Fetches population of agent's current position
 
     junctions = {}
     if row > 0:
@@ -28,18 +28,18 @@ def compute_probabilities(agent, environment):
     if col < environment.n - 1:
         junctions["north"] = environment.stroma_vertical[row, col + 1]
 
-    d_min = min(junctions.values())
+    d_avg = sum(junctions.values())/len(junctions.values()) # Finds average of agent's surrounding stromal densities
 
-    probability_handling = (1 - agent.exhaustion) * (agent.affinity * p) / (1 + (agent.affinity * HANDLING_TIME_PARAM * p))
-    probability_traversing = (1 - probability_handling) / (1 + TRAVERSAL_SCALE * d_min)
-    probability_searching = 1 - probability_handling - probability_traversing
+    probability_handling = (1 - agent.exhaustion) * (agent.affinity * p) / (1 + (agent.affinity * HANDLING_TIME_PARAM * p)) # Determines probability of entering handling state
+    probability_traversing = (1 - probability_handling) / (1 + TRAVERSAL_SCALE * d_avg) # Determines probability of entering traversal state
+    probability_searching = 1 - probability_handling - probability_traversing # Determines probability of entering searching state
 
     return probability_handling, probability_traversing, probability_searching
 
 
 def draw_state(probability_handling, probability_traversing, probability_searching):
     state_choices = ["handling", "traversing", "searching"]
-    return random.choices(state_choices, [probability_handling, probability_traversing, probability_searching], k=1)[0]
+    return random.choices(state_choices, [probability_handling, probability_traversing, probability_searching], k=1)[0] # Makes weighted decision on behavior state
 
 
 def update_exhaustion(agent, environment):
