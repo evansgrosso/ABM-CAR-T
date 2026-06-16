@@ -85,7 +85,13 @@ def resolve_traversal(agent, environment):
     if col < environment.n - 1:
         junctions["north"] = environment.stroma_vertical[row, col + 1]
 
-    chosen_direction = min(junctions, key=junctions.get)
+    directions = list(junctions.keys())
+    densities = list(junctions.values())
+
+    weights = [1.0 / (d + 1e-6) for d in densities] # 1e-6 to avoid divide by zero error; #TODO: Check that stromal density and agent traversal direction choice is inversely proportional or some other relationship 
+
+    chosen_direction = random.choices(directions, weights, k=1)[0]
+
     chosen_stroma = junctions[chosen_direction]
     time_cross = max(1, round(chosen_stroma * TRAVERSAL_TIME_MULTIPLIER))
 
