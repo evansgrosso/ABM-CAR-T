@@ -1,280 +1,229 @@
-import numpy as np
-import matplotlib
+from pathlib import Path
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib
+import numpy as np
 
 from simulation import run
 
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-COLORS = {
-    "malignant": "#1f77b4",
-    "kills": "#d62728",
-    "agents": "#9467bd",
-    "exhaustion": "#2ca02c",
-    "endpoint": "#333333",
-    "searching": "#4c78a8",
-    "handling": "#f58518",
-    "traversing": "#54a24b",
-}
+RESULTS_DIR = Path(__file__).resolve().parents[1] / "Simulation Results"
 
 
-def new_history():
-    return {
-        "time": [],
-        "total_malignant_population": [],
-        "total_kills": [],
-        "mean_exhaustion": [],
-        "alive_agents": [],
-        "dead_agents": [],
-        "searching_count": [],
-        "handling_count": [],
-        "traversing_count": [],
-        "searching_pct": [],
-        "handling_pct": [],
-        "traversing_pct": [],
-        "agent_endpoints": {},
+def run_and_collect_data():
+    data = {
+        "time": [],  # Current simulation tick
+        "tumor_population": [],  # Total tumor cells at each tick
+        "total_kills": [],  # Running total of successful kills
+        "alive_agents": [],  # List of CAR T cells still alive
+        "mean_exhaustion": [],  # Average exhaustion among living agents
+        "searching_pct": [],  # Percent of living agents in searching state
+        "handling_pct": [],  # Percent of living agents undergoing cytotoxic interaction
+        "traversing_pct": [],  # Percent of living agents undergoing traversal
+        "agent_results": {},  # Final affinity and kill count for each agent
     }
+    total_kills = 0
 
+    def record_step(t, env, agents, kills_this_tick):
+        nonlocal total_kills
+        total_kills += kills_this_tick
 
-def collect_simulation_history():
-    """Run the simulation once and collect reusable time-series data."""
-    history = new_history()
-    cumulative_kills = 0
-    initial_agent_count = None
-
-    def track(t, env, agents, kills_this_tick):
-        nonlocal cumulative_kills, initial_agent_count
-
-        if initial_agent_count is None:
-            initial_agent_count = len(agents)
-        cumulative_kills += kills_this_tick
-
-        alive_agents = [agent for agent in agents if agent.state != "dead"]
-        alive_count = len(alive_agents)
-        dead_count = initial_agent_count - alive_count
-
-        state_counts = {
-            "searching": 0,
-            "handling": 0,
-            "traversing": 0,
-        }
-        for agent in alive_agents:
-            if agent.state in state_counts:
-                state_counts[agent.state] += 1
+        alive_agents = []
+        searching_count = 0
+        handling_count = 0
+        traversing_count = 0
 
         for agent in agents:
-            agent_id = id(agent)
-            endpoint = history["agent_endpoints"].setdefault(
-                agent_id,
-                {
-                    "affinity": agent.affinity,
-                    "total_kills": 0,
-                    "terminal_exhaustion_tick": None,
-                },
-            )
-            endpoint["total_kills"] = agent.kills
-            if agent.exhaustion >= 1 and endpoint["terminal_exhaustion_tick"] is None:
-                endpoint["terminal_exhaustion_tick"] = t
+            data["agent_results"][id(agent)] = {
+                "affinity": agent.affinity,
+                "kills": agent.kills,
+            }
 
-        if alive_count:
-            mean_exhaustion = np.mean([agent.exhaustion for agent in alive_agents])
-            searching_pct = 100 * state_counts["searching"] / alive_count
-            handling_pct = 100 * state_counts["handling"] / alive_count
-            traversing_pct = 100 * state_counts["traversing"] / alive_count
+            if agent.state == "dead":
+                continue
+
+            alive_agents.append(agent)
+
+            if agent.state == "searching":
+                searching_count += 1
+            elif agent.state == "handling":
+                handling_count += 1
+            elif agent.state == "traversing":
+                traversing_count += 1
+
+        alive_count = len(alive_agents)
+
+        if alive_count > 0:
+            mean_exhaustion = np.mean(
+                [agent.exhaustion for agent in alive_agents]
+            )
+            searching_pct = 100 * searching_count / alive_count
+            handling_pct = 100 * handling_count / alive_count
+            traversing_pct = 100 * traversing_count / alive_count
         else:
-            mean_exhaustion = np.nan
+            mean_exhaustion = 0
             searching_pct = 0
             handling_pct = 0
             traversing_pct = 0
 
-        history["time"].append(t)
-        history["total_malignant_population"].append(np.sum(env.population_grid))
-        history["total_kills"].append(cumulative_kills)
-        history["mean_exhaustion"].append(mean_exhaustion)
-        history["alive_agents"].append(alive_count)
-        history["dead_agents"].append(dead_count)
-        history["searching_count"].append(state_counts["searching"])
-        history["handling_count"].append(state_counts["handling"])
-        history["traversing_count"].append(state_counts["traversing"])
-        history["searching_pct"].append(searching_pct)
-        history["handling_pct"].append(handling_pct)
-        history["traversing_pct"].append(traversing_pct)
+        data["time"].append(t)
+        data["tumor_population"].append(np.sum(env.population_grid))
+        data["total_kills"].append(total_kills)
+        data["alive_agents"].append(alive_count)
+        data["mean_exhaustion"].append(mean_exhaustion)
+        data["searching_pct"].append(searching_pct)
+        data["handling_pct"].append(handling_pct)
+        data["traversing_pct"].append(traversing_pct)
 
-    run(on_step=track)
-    return history
+    run(on_step=record_step)
+    return data
 
 
-def style_axis(ax):
-    ax.grid(True, alpha=0.25)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+def save_plot(filename):
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    plt.savefig(RESULTS_DIR / filename, dpi=300)
+    plt.close()
 
 
-def save_figure(fig, output_path):
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close(fig)
+def plot_population_and_kills(data):
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+    ax2 = ax1.twinx()
 
-
-def plot_regression(ax, x, y, line_color):
-    if len(x) >= 2 and len(set(x)) > 1:
-        sns.regplot(
-            x=x,
-            y=y,
-            ax=ax,
-            scatter_kws={"s": 18, "alpha": 0.55, "color": COLORS["endpoint"]},
-            line_kws={"color": line_color, "linewidth": 2},
-            ci=None,
-        )
-    else:
-        sns.scatterplot(
-            x=x,
-            y=y,
-            ax=ax,
-            s=18,
-            alpha=0.55,
-            color=COLORS["endpoint"],
-        )
-        ax.text(
-            0.5,
-            0.5,
-            "Regression unavailable",
-            transform=ax.transAxes,
-            ha="center",
-            va="center",
-        )
-
-
-def plot_macroscopic_timeseries(history, output_path="timeseries_macroscopic.png"):
-    """Save malignant burden, kills, exhaustion, and agent state summaries."""
-    time = history["time"]
-
-    fig, axes = plt.subplots(
-        4,
-        1,
-        figsize=(10, 12),
-        sharex=True,
-        constrained_layout=True,
-    )
-
-    ax_pop = axes[0]
-    ax_kills = ax_pop.twinx()
-    pop_line = ax_pop.plot(
-        time,
-        history["total_malignant_population"],
-        color=COLORS["malignant"],
+    line1 = ax1.plot(
+        data["time"],
+        data["tumor_population"],
         linewidth=2,
+        color="tab:red",
         label="Total malignant population",
     )
-    kill_line = ax_kills.plot(
-        time,
-        history["total_kills"],
-        color=COLORS["kills"],
-        linewidth=2,
-        label="Total kills",
-    )
-    ax_pop.set_ylabel("Malignant cells", color=COLORS["malignant"])
-    ax_kills.set_ylabel("Cumulative kills", color=COLORS["kills"])
-    ax_pop.tick_params(axis="y", labelcolor=COLORS["malignant"])
-    ax_kills.tick_params(axis="y", labelcolor=COLORS["kills"])
-    ax_pop.legend(pop_line + kill_line, [line.get_label() for line in pop_line + kill_line], loc="best")
 
-    axes[1].plot(
-        time,
-        history["alive_agents"],
-        color=COLORS["agents"],
+    line2 = ax2.plot(
+        data["time"],
+        data["total_kills"],
+        linewidth=2,
+        color="tab:blue",
+        label="Cumulative kills",
+    )
+
+    ax1.set_ylabel("Malignant cells", color="tab:red")
+    ax2.set_ylabel("Cumulative kills", color="tab:blue")
+
+    ax1.tick_params(axis="y", labelcolor="tab:red")
+    ax2.tick_params(axis="y", labelcolor="tab:blue")
+
+    ax1.legend(
+        line1 + line2,
+        ["Total malignant population", "Cumulative kills"],
+    )
+
+    ax2.spines["top"].set_visible(False)
+    save_plot("population_and_kills.png")
+
+
+def plot_agent_survival(data):
+    plt.figure(figsize=(10, 5))
+    plt.plot(
+        data["time"],
+        data["alive_agents"],
         linewidth=2,
     )
-    axes[1].set_ylabel("Alive agents")
-    axes[1].set_ylim(bottom=0)
+    plt.title("Agent Survival")
+    plt.xlabel("Time (ticks)")
+    plt.ylabel("Alive agents")
+    plt.grid(True, alpha=0.25)
+    save_plot("agent_survival.png")
 
-    axes[2].plot(
-        time,
-        history["mean_exhaustion"],
-        color=COLORS["exhaustion"],
+
+def plot_mean_exhaustion(data):
+    plt.figure(figsize=(10, 5))
+    plt.plot(
+        data["time"],
+        data["mean_exhaustion"],
         linewidth=2,
     )
-    axes[2].set_ylabel("Mean exhaustion")
-    axes[2].set_ylim(0, 1)
+    plt.title("Mean Agent Exhaustion")
+    plt.xlabel("Time (ticks)")
+    plt.ylabel("Mean exhaustion")
+    plt.ylim(0, 1)
+    plt.grid(True, alpha=0.25)
+    save_plot("mean_exhaustion.png")
 
-    axes[3].stackplot(
-        time,
-        history["searching_pct"],
-        history["handling_pct"],
-        history["traversing_pct"],
-        labels=["Searching", "Handling", "Traversal"],
-        colors=[COLORS["searching"], COLORS["handling"], COLORS["traversing"]],
+
+def plot_agent_state_mix(data):
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.stackplot(
+        data["time"],
+        data["searching_pct"],
+        data["handling_pct"],
+        data["traversing_pct"],
+        labels=["Searching", "Handling", "Traversing"],
         alpha=0.85,
     )
-    axes[3].set_ylabel("Agent state (%)")
-    axes[3].set_xlabel("Time (ticks)")
-    axes[3].set_ylim(0, 100)
-    axes[3].legend(loc="upper right", ncol=3, frameon=False)
 
-    for ax in axes:
-        style_axis(ax)
+    ax.set_title("Agent State Mix")
+    ax.set_xlabel("Time (ticks)")
+    ax.set_ylabel("Alive agents (%)")
+    ax.set_ylim(0, 100)
+    ax.legend(loc="upper right", ncol=3, frameon=False)
 
-    ax_kills.spines["top"].set_visible(False)
-
-    fig.suptitle("Macroscopic Simulation Dynamics", fontsize=14)
-    save_figure(fig, output_path)
+    save_plot("agent_state_mix.png")
 
 
-def plot_agent_endpoint_analysis(history, output_path="agent_endpoint_analysis.png"):
-    """Save endpoint relationships between affinity, kills, and exhaustion time."""
-    endpoints = list(history["agent_endpoints"].values())
-    affinity = [endpoint["affinity"] for endpoint in endpoints]
-    kills = [endpoint["total_kills"] for endpoint in endpoints]
-    exhausted = [
-        endpoint
-        for endpoint in endpoints
-        if endpoint["terminal_exhaustion_tick"] is not None
-    ]
+def plot_affinity_vs_kills(data):
+    affinity = []
+    kills = []
 
-    sns.set_theme(style="whitegrid", context="paper")
-    fig, axes = plt.subplots(
-        1,
-        2,
-        figsize=(12, 5),
-        constrained_layout=True,
+    for result in data["agent_results"].values():
+        affinity.append(result["affinity"])
+        kills.append(result["kills"])
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    ax.scatter(
+        affinity,
+        kills,
+        s=16,
+        alpha=0.5,
     )
 
-    plot_regression(axes[0], affinity, kills, COLORS["kills"])
-    axes[0].set_title("Affinity vs. Efficacy")
-    axes[0].set_xlabel("Receptor binding affinity (alpha)")
-    axes[0].set_ylabel("Total kills")
+    if len(affinity) >= 2 and len(set(affinity)) > 1:
+        slope, intercept = np.polyfit(affinity, kills, 1)
 
-    exhausted_affinity = [endpoint["affinity"] for endpoint in exhausted]
-    exhaustion_tick = [endpoint["terminal_exhaustion_tick"] for endpoint in exhausted]
-    plot_regression(axes[1], exhausted_affinity, exhaustion_tick, COLORS["exhaustion"])
-    axes[1].set_title("Affinity vs. Survivability")
-    axes[1].set_xlabel("Receptor binding affinity (alpha)")
-    axes[1].set_ylabel("Terminal exhaustion tick")
+        x_values = np.linspace(
+            min(affinity),
+            max(affinity),
+            100,
+        )
 
-    for ax in axes:
-        style_axis(ax)
+        y_values = slope * x_values + intercept
 
-    fig.suptitle("Agent Endpoint Analysis", fontsize=14)
-    save_figure(fig, output_path)
+        ax.plot(
+            x_values,
+            y_values,
+            linewidth=2,
+            color = "black",
+        )
+
+    ax.set_title("Affinity vs. Kills")
+    ax.set_xlabel("Receptor binding affinity")
+    ax.set_ylabel("Total kills")
+
+    save_plot("affinity_vs_kills.png")
 
 
-DEFAULT_PLOTTERS = (
-    plot_macroscopic_timeseries,
-    plot_agent_endpoint_analysis,
-)
+def make_all_plots():
+    data = run_and_collect_data()
 
+    plot_population_and_kills(data)
+    plot_agent_survival(data)
+    plot_mean_exhaustion(data)
+    plot_agent_state_mix(data)
+    plot_affinity_vs_kills(data)
 
-def generate_visualizations(history=None, plotters=DEFAULT_PLOTTERS):
-    """Generate all experiment plots from one simulation history."""
-    if history is None:
-        history = collect_simulation_history()
-
-    for plotter in plotters:
-        plotter(history)
-
-    return history
+    return data
 
 
 if __name__ == "__main__":
-    generate_visualizations()
+    make_all_plots()
