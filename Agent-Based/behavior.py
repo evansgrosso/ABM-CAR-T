@@ -119,7 +119,7 @@ def step(agent, environment):
         probability_handling, probability_traversing, probability_searching = compute_probabilities(agent, environment)
         next_state = draw_state(probability_handling, probability_traversing, probability_searching)
         if next_state == "handling":
-            probability_kill = agent.affinity * (1 - agent.exhaustion)
+            probability_kill = agent.affinity
             agent.pending_kill = random.choices([True, False], [probability_kill, 1 - probability_kill], k=1)[0]
             agent.t_spent = 0
             agent.state = "handling"
